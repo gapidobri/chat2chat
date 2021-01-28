@@ -4,6 +4,7 @@ import defaults from 'dat-swarm-defaults';
 import getPort from 'get-port';
 import { question, log } from './readline.js';
 import rls from 'readline-sync';
+import natpmp from 'nat-pmp';
 
 const userId = randomBytes(32);
 const swarmConfig = defaults({ id: userId });
@@ -38,6 +39,11 @@ const props = {
 
 swarm.listen(port);
 log(`Listening on port ${port}`);
+
+const client = natpmp.connect('192.168.0.1');
+
+// Open router port with NAT-PMP
+client.portMapping({ private: port, public: 4444, ttl: 3600 });
 
 swarm.join(room);
 log(`Joined room ${room}`);
