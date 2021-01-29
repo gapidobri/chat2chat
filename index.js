@@ -5,6 +5,8 @@ import getPort from 'get-port';
 import { question, log } from './readline.js';
 import rls from 'readline-sync';
 import natpmp from 'nat-pmp';
+import net from 'network';
+import colors from 'colors';
 
 const userId = randomBytes(32);
 const swarmConfig = defaults({ id: userId });
@@ -37,16 +39,22 @@ const props = {
     username: rls.question('Username: '),
 };
 
+// Get the router's ip address
+net.get_gateway_ip((err, ip) => {
+    // Open router port with NAT-PMP
+    const client = natpmp.connect(ip);
+    client.portMapping({ private: port, ttl: 3600 }, (err, info) => {
+        if (err) log('There was an error with port forwarding');
+        log(`Port forwarded ${colors.blue(info.private)} -> ${colors.blue(info.public)}`);
+    });
+});
+
+
 swarm.listen(port);
-log(`Listening on port ${port}`);
-
-const client = natpmp.connect('192.168.0.1');
-
-// Open router port with NAT-PMP
-client.portMapping({ private: port, public: 4444, ttl: 3600 });
+log(`Listening on port ${colors.blue(port)}`);
 
 swarm.join(room);
-log(`Joined room ${room}`);
+log(`Joined room ${colors.blue(room)}`);
 
 let propString = '#';
 
@@ -92,8 +100,8 @@ swarm.on('connection', (connection, info) => {
 
     connection.on('close', () => {
         if (peers[peerId].seq === seq) {
-            delete peers[peerId];
             log(`${peers[peerId].props.username} left`);
+            delete peers[peerId];
         }
     });
 
