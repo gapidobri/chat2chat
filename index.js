@@ -12,8 +12,8 @@ const userId = randomBytes(32);
 const swarmConfig = defaults({ id: userId });
 
 const swarm = Swarm(swarmConfig);
-const port = await getPort();
-const room = 'defaultRoom';
+const port =  await getPort();
+const room = 'default';
 
 const peers = {};
 let connSeq = 0;
@@ -43,24 +43,23 @@ const props = {
 net.get_gateway_ip((err, ip) => {
     // Open router port with NAT-PMP
     const client = natpmp.connect(ip);
-    client.portMapping({ private: port, ttl: 3600 }, (err, info) => {
+    client.portMapping({ private: port, public: 418, ttl: 3600 }, (err, info) => {
         if (err) log('There was an error with port forwarding');
         log(`Port forwarded ${colors.blue(info.private)} -> ${colors.blue(info.public)}`);
     });
 });
 
-
+// Listen on port
 swarm.listen(port);
 log(`Listening on port ${colors.blue(port)}`);
 
+// Join the room
 swarm.join(room);
 log(`Joined room ${colors.blue(room)}`);
 
 let propString = '#';
-
-for (let prop in props) {
+for (let prop in props)
     propString += `${prop}=${props[prop]}`;
-}
 
 swarm.on('connection', (connection, info) => {
     
@@ -92,6 +91,10 @@ swarm.on('connection', (connection, info) => {
                 const parts = prop.split('=').map(v => v.trim());
                 props[parts[0]] = parts[1];
             }
+            if (!peers[peerId].props) {
+                // Client has connected and not sent any data yet
+                log(`${props.username} joined`.green);
+            }
             peers[peerId].props = props;
         } else {
             log(chatFormat(peers[peerId].props.username, message));
@@ -100,7 +103,7 @@ swarm.on('connection', (connection, info) => {
 
     connection.on('close', () => {
         if (peers[peerId].seq === seq) {
-            log(`${peers[peerId].props.username} left`);
+            log(`${peers[peerId].props.username} left`.red);
             delete peers[peerId];
         }
     });
